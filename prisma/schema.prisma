@@ -1,0 +1,85 @@
+// Prisma schema for Remedial School Affiliate Program
+// Adapted from MySQL to SQLite (SQLite lacks ENUM/DECIMAL; using String + Float with app-level validation)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id             Int      @id @default(autoincrement())
+  agentId        String   @unique @map("agent_id") // AGENT001
+  fullName       String   @map("full_name")
+  email          String   @unique
+  pinHash        String   @map("pin_hash") // bcrypt-hashed 4-digit PIN
+  phone          String?
+  commissionRate Float    @default(15.0) @map("commission_rate") // percentage
+  status         String   @default("Active") // 'Active' | 'Inactive'
+  role           String   @default("agent") // 'agent' | 'admin'
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  claims Claim[]
+
+  @@index([email])
+  @@index([status])
+  @@map("agents")
+}
+
+model Claim {
+  id                   Int       @id @default(autoincrement())
+  claimId              String    @unique @map("claim_id") // CLAIM001
+  agentId              Int       @map("agent_id")
+  agent                Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agentName            String    @map("agent_name")
+  agentEmail           String    @map("agent_email")
+  parentFullName       String    @map("parent_full_name")
+  parentPhone          String    @map("parent_phone")
+  parentEmail          String?   @map("parent_email")
+  studentName          String    @map("student_name")
+  studentGrade         String    @map("student_grade") // Grade 1 - Grade 8
+  studentSchool        String?   @map("student_school")
+  subjects            String    @default("") @map("subjects") // comma-separated subject names
+  subjectCount        Int       @default(0) @map("subject_count") // number of subjects enrolled
+  totalStudentFee     Float     @default(0) @map("total_student_fee") // subjectCount × pricePerSubject
+  notes                String?
+  status               String    @default("Pending") // Pending | Approved | Rejected | Paid
+  commissionAmount     Float     @default(0) @map("commission_amount")
+  startDate            String?   @map("start_date") // ISO date string (YYYY-MM-DD)
+  thirtyDayCheckpoint  String?   @map("thirty_day_checkpoint") // ISO date string
+  paymentMethod        String?   @map("payment_method") // M-Pesa | EcoCash | Cash | Bank Transfer
+  datePaid             String?   @map("date_paid") // ISO date string
+  adminNotes           String?   @map("admin_notes")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@index([agentId])
+  @@index([status])
+  @@index([claimId])
+  @@map("claims")
+}
+
+model AdminSetting {
+  id           Int      @id @default(autoincrement())
+  settingKey   String   @unique @map("setting_key")
+  settingValue String?  @map("setting_value")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_settings")
+}
+
+model Subject {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique                      // e.g. "Mathematics"
+  price     Float    @default(100)                // per-subject price in Loti
+  isActive  Boolean  @default(true) @map("is_active") // soft-delete
+  sortOrder Int      @default(0) @map("sort_order")  // display order
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("subjects")
+}
